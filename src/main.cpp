@@ -154,7 +154,6 @@ static int kni_config_network_interface(uint8_t port_id, uint8_t if_up);
 
 static rte_atomic32_t kni_stop = RTE_ATOMIC32_INIT(0);
 
-#define LOCAL_IP_ADDR	"42.51.169.191"
 uint32_t  local_ip;
 
 std::unordered_map<std::string, std::string> alldomain;
@@ -171,9 +170,9 @@ signal_handler(int signum)
 	if (signum == SIGRTMIN || signum == SIGINT) {
 		printf("The processing is going to stop\n");
 
-        std::cout << "total_dns_pkts:" << worker.decoder.total_dns_pkts << ", "
-                  << "total_enqueue:"  << worker.decoder.total_enqueue << ", "
-                  << "total_send_out:" << total_send_out << "\n";
+        std::cout << "total_dns_pkts:" << worker.decoder.total_dns_pkts << "\n";
+        std::cout << "total_enqueue :" << worker.decoder.total_enqueue << "\n";
+        std::cout << "total_send_out:" << total_send_out << "\n";
 		rte_atomic32_inc(&kni_stop);
 		return;
 	}
@@ -363,31 +362,29 @@ send_to_eth(void *arg)
 
 		/* Burst rx from kni */
 		num = rte_kni_rx_burst(p->kni, pkts_burst, PKT_BURST_SZ);
-        if (unlikely(num == 0))
-            continue;
-
-		/* Burst tx to eth */
-		nb_tx = rte_eth_tx_burst(port_id, 0, pkts_burst, num);
-		kni_stats[port_id].tx_packets += nb_tx;
-		if (unlikely(nb_tx < num)) {
-			/* Free mbufs not tx to NIC */
-			kni_burst_free_mbufs(&pkts_burst[nb_tx], num - nb_tx);
-			kni_stats[port_id].tx_dropped += num - nb_tx;
-		}
+        if (likely(num)) {
+            /* Burst tx to eth */
+            nb_tx = rte_eth_tx_burst(port_id, 0, pkts_burst, num);
+            kni_stats[port_id].tx_packets += nb_tx;
+            if (unlikely(nb_tx < num)) {
+                /* Free mbufs not tx to NIC */
+                kni_burst_free_mbufs(&pkts_burst[nb_tx], num - nb_tx);
+                kni_stats[port_id].tx_dropped += num - nb_tx;
+            }
+        }
 
 
         tx_ring = p->tx_ring;
         num = rte_ring_sc_dequeue_burst(tx_ring, (void **)pkts_burst, PKT_BURST_SZ);
-        if (unlikely(num == 0))
-            continue;
-
-        /* Burst tx to eth */
-        nb_tx = rte_eth_tx_burst(port_id, 0, pkts_burst, num);
-        total_send_out += num;
-        if (unlikely(nb_tx < num)) {
-            /* Free mbufs not tx to NIC */
-            std::cout << "dequeue error\n";
-            kni_burst_free_mbufs(&pkts_burst[nb_tx], num - nb_tx);
+        if (likely(num)) {
+            /* Burst tx to eth */
+            nb_tx = rte_eth_tx_burst(port_id, 0, pkts_burst, num);
+            total_send_out += num;
+            if (unlikely(nb_tx < num)) {
+                /* Free mbufs not tx to NIC */
+                std::cout << "dequeue error\n";
+                kni_burst_free_mbufs(&pkts_burst[nb_tx], num - nb_tx);
+            }
         }
     }
 }
