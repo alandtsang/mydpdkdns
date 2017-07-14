@@ -168,10 +168,10 @@ struct dnshdr {
 	uint16_t id;		/* query identification number */
 	uint8_t  flags1;	/* first byte of flags */
 	uint8_t  flags2;	/* second byte of flags */
-	uint16_t qdcount;	/* number of question entries */
+	uint16_t qucount;	/* number of question entries */
 	uint16_t ancount;	/* number of answer entries */
-	uint16_t nscount;	/* number of authority entries */
-	uint16_t arcount;	/* number of resource entries */
+	uint16_t aucount;	/* number of authority entries */
+	uint16_t adcount;	/* number of additional entries */
 };
 
 /*

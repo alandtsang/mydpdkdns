@@ -15,7 +15,7 @@
  */
 void Dns::decode(const char* buffer)
 {
-    //decode_hdr(buffer);
+    decode_hdr(buffer);
     buffer += hdr_offset;
 
     decode_qname(buffer);
@@ -28,11 +28,13 @@ void Dns::decode(const char* buffer)
 
 void Dns::decode_hdr(const char* buffer)
 {
-	EXTRACT_16BITS(&dns_hdr.id);
-	EXTRACT_16BITS(&dns_hdr.qdcount);
-	EXTRACT_16BITS(&dns_hdr.ancount);
-	EXTRACT_16BITS(&dns_hdr.nscount);
-	EXTRACT_16BITS(&dns_hdr.arcount);
+    dns_hdr = *(struct dnshdr*) buffer;
+
+	//dns_hdr.id = EXTRACT_16BITS(&dns_hdr.id);
+	dns_hdr.qucount = EXTRACT_16BITS(&dns_hdr.qucount);
+	//dns_hdr.ancount = EXTRACT_16BITS(&dns_hdr.ancount);
+	//dns_hdr.aucount = EXTRACT_16BITS(&dns_hdr.aucount);
+	dns_hdr.adcount = EXTRACT_16BITS(&dns_hdr.adcount);
 }
 
 void Dns::decode_qname(const char*& buffer)
@@ -100,7 +102,7 @@ void Dns::code_hdr(char*& buffer)
 {
 //	dns_hdr.flags1 = 0x81;
 //	dns_hdr.flags2 = 0x80;
-	dns_hdr.qdcount	= 1;
+	dns_hdr.qucount	= 1;
 	//dns_hdr.ancount	= 1;
 //	dns_hdr.nscount	= 0;
 //	dns_hdr.arcount	= 0;
@@ -109,7 +111,7 @@ void Dns::code_hdr(char*& buffer)
 	buffer[0] = 0x81;
 	buffer[1] = 0x80;
 	buffer += 2;  // skip flags
-	put16bits(buffer, dns_hdr.qdcount);
+	put16bits(buffer, dns_hdr.qucount);
 	put16bits(buffer, dns_hdr.ancount);
 	//buffer += 4;  // skip auth and add
 }
