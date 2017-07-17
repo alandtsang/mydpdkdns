@@ -5,13 +5,22 @@
 #include <sys/types.h>
 #include <arpa/inet.h>
 
-#include <vector>
+#include "edns.h"
+
+#pragma pack(1)
 
 static inline uint16_t
 EXTRACT_16BITS(const void *p)
 {
 	return ((uint16_t)ntohs(*(const uint16_t *)(p)));
 }
+
+static inline uint32_t
+EXTRACT_32BITS(const void *p)
+{
+    return ((uint32_t)ntohl(*(const uint32_t *)(p)));
+}
+
 
 /*
  * Define constants based on rfc883
@@ -228,6 +237,8 @@ public:
 private:
 	void decode_hdr(const char* buffer);
 	void decode_qname(const char*& buffer);
+    void decode_additional(const char* buffer);
+    void decode_option(const char* buffer);
 
 	void code_hdr(char*& buffer);
 	void code_domain(char*& buffer, const std::string& domain);
@@ -260,6 +271,8 @@ private:
 	std::string	m_qName;
 	uint16_t	m_qType;
 	uint16_t	m_qClass;
+
+    struct optrr opt;
 	struct respanswer m_ra;
 
     uint16_t query_len;

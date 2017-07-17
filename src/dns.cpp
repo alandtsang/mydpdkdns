@@ -24,6 +24,9 @@ void Dns::decode(const char* buffer)
     //std::cout << "m_qName:" << m_qName << "\n";
     //std::cout << "m_qType:" << m_qType << "\n";
     //std::cout << "m_qClass:" << m_qClass << "\n";
+
+    if (dns_hdr.adcount)
+        decode_additional(buffer);
 }
 
 void Dns::decode_hdr(const char* buffer)
@@ -52,6 +55,42 @@ void Dns::decode_qname(const char*& buffer)
     }
 
     query_len = m_qName.length() + 2 + 4;
+}
+
+void Dns::decode_additional(const char* buffer)
+{
+    opt = *(struct optrr*) buffer;
+    opt.opt_type = EXTRACT_16BITS(&opt.opt_type);
+    opt.opt_class = EXTRACT_16BITS(&opt.opt_class);
+    opt.opt_ttl = EXTRACT_32BITS(&opt.opt_ttl);
+    opt.rdlen = EXTRACT_16BITS(&opt.rdlen);
+    std::cout << "name=" << (uint16_t) opt.opt_name
+              << ", type=" << opt.opt_type
+              << ", class=" << opt.opt_class
+              << ", ttl=" << opt.opt_ttl
+              << ", rdlen=" << opt.rdlen << "\n";
+    if (opt.rdlen)
+        decode_option(buffer + 11);
+}
+
+void Dns::decode_option(const char* p)
+{
+    struct edns0opt eo = *(struct edns0opt*) p;
+    if (eo.opt_code == 0x0800) {
+        eo.opt_code = EXTRACT_16BITS(&eo.opt_code);
+        eo.opt_len = EXTRACT_16BITS(&eo.opt_len);
+        eo.family = EXTRACT_16BITS(&eo.family);
+        struct in_addr addr;
+        memcpy(&addr, &eo.sub_addr, 4);
+        char* ip = inet_ntoa(addr);
+
+        std::cout << "opt_code=" << eo.opt_code
+                  << ", opt_len=" << eo.opt_len
+                  << ", family=" << eo.family
+                  << ", smask=" << (uint16_t)eo.source_netmask
+                  << ", scropmask=" << (uint16_t)eo.scope_netmask
+                  << ", ip=" << ip << "\n";
+    }
 }
 
 /*
