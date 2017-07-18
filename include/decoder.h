@@ -51,6 +51,7 @@ private:
     /* user ip info */
     struct in_addr addr;
     char* ip;
+    char* sub_addr;
     std::string domain_ip;
 };
 

@@ -8,7 +8,7 @@
 struct optrr {
     uint8_t  opt_name;
     uint16_t opt_type;
-    uint16_t opt_class;
+    uint16_t opt_udpsize;
     uint32_t opt_ttl;
     uint16_t rdlen;
 };

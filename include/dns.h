@@ -234,6 +234,11 @@ public:
 	void decode(const char* buffer);
 	int code(char* buffer);
 
+    /* edns */
+    bool have_edns;
+    char* client_ip;
+    struct edns0opt eo;
+
 private:
 	void decode_hdr(const char* buffer);
 	void decode_qname(const char*& buffer);
@@ -276,8 +281,8 @@ private:
 	struct respanswer m_ra;
 
     uint16_t query_len;
-
     std::string domain_ip_;
+    struct in_addr addr;
 
     Dns(const Dns&);
     void operator=(const Dns&);

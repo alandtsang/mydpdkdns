@@ -1,4 +1,5 @@
 #include <unordered_map>
+#include <iostream>
 
 #include <rte_ether.h>
 
@@ -96,9 +97,6 @@ Decoder::process_pkts(struct rte_mbuf *m)
                 return txpkts;
             }
 
-            memcpy(&addr, &ip_hdr->src_addr, 4);
-            ip = inet_ntoa(addr);  // user src ip
-
             char* buff = (char *)udp_hdr +  sizeof(struct udp_hdr);
             char* buffstart = buff;
 
@@ -107,13 +105,21 @@ Decoder::process_pkts(struct rte_mbuf *m)
             /* Get domain group */
             qName = dns.get_domain_name();
 
+            if (dns.have_edns) {
+                ip = dns.client_ip;
+            } else {
+                memcpy(&addr, &ip_hdr->src_addr, 4);
+                ip = inet_ntoa(addr);  // user src ip
+            }
+            //std::cout << "ip=" << ip << "\n";
+
             domain_ip = "153.37.234.35";  // for test
             dns.set_domain_ip_group(domain_ip);
 
             if (logger->enabled)
                 logger->log_info("[info] qtype=A " "domain=%s "
-                        "answer=%s " "src_ip=%s ",
-                        qName.c_str(), domain_ip.c_str(), ip);
+                        "answer=%s " "src_ip=%s sub_ip=%s",
+                        qName.c_str(), domain_ip.c_str(), ip, sub_addr);
 
             struct rte_mbuf  *pkt;
             struct ether_hdr *eth_hdr = ehdr;
