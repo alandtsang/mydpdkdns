@@ -102,6 +102,33 @@ Now, you can test the dns server.
 ./unbind.sh
 ```
 
+Support edns
+============
+```
+dig @192.168.44.129 www.baidu.com +subnet=1.2.3.4
+
+; <<>> DiG 9.11.1-P3 <<>> @192.168.44.129 www.baidu.com +subnet=1.2.3.4
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 28688
+;; flags: qr rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 512
+; CLIENT-SUBNET: 1.2.3.4/32/0
+;; QUESTION SECTION:
+;www.baidu.com.	IN	A
+
+;; ANSWER SECTION:
+www.baidu.com. 0	IN	A	153.37.234.35
+
+;; Query time: 0 msec
+;; SERVER: 192.168.44.129#53(192.168.44.129)
+;; WHEN: Tue Jul 18 17:02:16 CST 2017
+;; MSG SIZE  rcvd: 82
+```
+
 
 Get Help
 ============
