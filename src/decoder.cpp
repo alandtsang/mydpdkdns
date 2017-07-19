@@ -105,12 +105,11 @@ Decoder::process_pkts(struct rte_mbuf *m)
             /* Get domain group */
             qName = dns.get_domain_name();
 
-            if (dns.have_edns) {
-                ip = dns.client_ip;
-            } else {
-                memcpy(&addr, &ip_hdr->src_addr, 4);
-                ip = inet_ntoa(addr);  // user src ip
-            }
+            if (dns.have_edns)
+                memcpy(ip, dns.client_ip, 16);
+            else
+                inet_ntop(AF_INET, &ip_hdr->src_addr, ip, 16);
+
             //std::cout << "ip=" << ip << "\n";
 
             domain_ip = "153.37.234.35";  // for test

@@ -236,7 +236,7 @@ public:
 
     /* edns */
     bool have_edns;
-    char* client_ip;
+    char client_ip[16];
     struct edns0opt eo;
 
 private:

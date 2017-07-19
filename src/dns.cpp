@@ -82,8 +82,7 @@ void Dns::decode_option(const char* p)
         eo.opt_code = EXTRACT_16BITS(&eo.opt_code);
         eo.opt_len = EXTRACT_16BITS(&eo.opt_len);
         eo.family = EXTRACT_16BITS(&eo.family);
-        memcpy(&addr, &eo.sub_addr, 4);
-        client_ip = inet_ntoa(addr);
+        inet_ntop(AF_INET, &eo.sub_addr, client_ip, 16);
 
         /*std::cout << "opt_code=" << eo.opt_code
                   << ", opt_len=" << eo.opt_len
