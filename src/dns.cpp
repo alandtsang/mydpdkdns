@@ -127,8 +127,12 @@ int Dns::code(char* buffer)
 		put32bits(buffer, m_ra.r_ttl);
 		put16bits(buffer, m_ra.r_size);
 
-		intip = inet_addr(p);
-		put32bits(buffer, ntohl(intip));
+        inet_pton(AF_INET, p, (void *)&intip);
+        buffer[0] = (intip & 0xFF);
+        buffer[1] = (intip & 0xFF00) >> 8;
+        buffer[2] = (intip & 0xFF0000) >> 16;
+        buffer[3] = (intip & 0xFF000000) >> 24;
+        buffer += 4;
 
         dns_hdr.ancount++;
         if (dns_hdr.ancount >= 10) break;
