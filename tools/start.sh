@@ -17,9 +17,13 @@ if [ ! -d $logpath ]; then
     mkdir $logpath
 fi
 
+if [ ! -f $buildpath/bin/dserver ]; then
+    cd $buildpath
+    cmake ..
+    make
+fi
+
 cd $buildpath
-cmake ..
-make
 # 1111
 ./bin/dserver -c 0xf -n 1 -- -p1 --config '(0,0,1,2,3)' &
 
