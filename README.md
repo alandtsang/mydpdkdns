@@ -89,7 +89,7 @@ APP: Lcore 0 is reading from port 0
 APP: Configure network interface of 0 up
 ```
 
-Now, you can test the dns server.
+**Now, you can test the dns server.**
 
 
 ### stop program
@@ -101,6 +101,16 @@ Now, you can test the dns server.
 ```
 ./unbind.sh
 ```
+
+### traffic monitoring
+```
+./monitor.sh
+port:0  rx:59791 p/s  5321471 bytes/s  tx:59690 p/s  6685280 bytes/s  dropped:0
+port:0  rx:67596 p/s  6016044 bytes/s  tx:67596 p/s  7570752 bytes/s  dropped:0
+port:0  rx:73860 p/s  6573540 bytes/s  tx:73860 p/s  8279488 bytes/s  dropped:0
+port:0  rx:72989 p/s  6495467 bytes/s  tx:72911 p/s  8166032 bytes/s  dropped:0
+```
+
 
 Support edns
 ============
