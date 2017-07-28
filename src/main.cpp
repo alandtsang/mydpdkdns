@@ -16,6 +16,7 @@
 #include <unordered_map>
 #include <memory>
 #include <vector>
+#include <iomanip>
 
 #include <netinet/in.h>
 #include <linux/if.h>
@@ -162,6 +163,20 @@ std::shared_ptr<dnslog::Logger> logger;
 
 Worker worker;
 
+static void
+stats_display(uint8_t port_id)
+{
+	struct rte_eth_stats stats;
+	rte_eth_stats_get(port_id, &stats);
+    std::cout << "port:" << (uint16_t) port_id << "  "
+              << "rx:" << stats.ipackets << " p/s  "
+              << stats.ibytes << " bytes/s  "
+              << "tx:" << stats.opackets << " p/s  "
+              << stats.obytes << " bytes/s  "
+              << "dropped:" << stats.imissed << "\n";
+    rte_eth_stats_reset(port_id);
+}
+
 /* Custom handling of signals to handle stats and kni processing */
 static void
 signal_handler(int signum)
@@ -175,7 +190,9 @@ signal_handler(int signum)
         std::cout << "total_send_out:" << total_send_out << "\n";
 		rte_atomic32_inc(&kni_stop);
 		return;
-	}
+	} else if (signum == SIGUSR1) {
+        stats_display(0);
+    }
 }
 
 static void
@@ -1042,6 +1059,7 @@ main(int argc, char** argv)
 
 	/* Associate signal_hanlder function with USR signals */
 	signal(SIGINT, signal_handler);
+    signal(SIGUSR1, signal_handler);
 
     logger = dnslog::Logger::getLogger();
 
