@@ -7,7 +7,6 @@
 
 #include "edns.h"
 
-#pragma pack(1)
 
 static inline uint16_t
 EXTRACT_16BITS(const void *p)
@@ -170,6 +169,8 @@ EXTRACT_32BITS(const void *p)
 #define CONV_BADCKSUM -3
 #define CONV_BADBUFLEN -4
 
+#pragma pack(1)
+
 /*
  * Structure for query header.
  */
@@ -216,12 +217,17 @@ struct respanswer {
 	std::string	r_data;		/* pointer to data */
 };
 
+#pragma pack()
+
 const uint8_t hdr_offset = 12;
 
 
 class Dns {
 public:
-	Dns() {}
+	Dns() {
+        m_qName.reserve(128);
+        domain_ip_.reserve(256);
+    }
 	~Dns() {}
 
 	inline std::string& get_domain_name() { return m_qName; }
@@ -281,7 +287,10 @@ private:
 	struct respanswer m_ra;
 
     uint16_t query_len;
+
     std::string domain_ip_;
+    size_t domain_ip_len_;
+    char cstr[512];
     struct in_addr addr;
 
     Dns(const Dns&);

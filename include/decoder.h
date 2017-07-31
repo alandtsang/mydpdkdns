@@ -16,6 +16,8 @@ class Decoder {
 public:
     Decoder() {
         logger = dnslog::Logger::getLogger();
+        qName.reserve(128);
+        domain_ip.reserve(256);
     }
     ~Decoder() {}
     unsigned process_pkts(struct rte_mbuf* m);
@@ -51,7 +53,7 @@ private:
     /* user ip info */
     struct in_addr addr;
     char ip[16];
-    char* sub_addr;
+    char* sub_ip;
     std::string domain_ip;
 };
 

@@ -22,5 +22,7 @@ struct edns0opt {
     uint32_t sub_addr;
 };
 
+#pragma pack()
+
 
 #endif /*INCLUDE_EDNS_H_ */

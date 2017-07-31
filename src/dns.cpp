@@ -43,16 +43,19 @@ void Dns::decode_hdr(const char* buffer)
 
 void Dns::decode_qname(const char*& buffer)
 {
-    m_qName.clear();
+    int i;
+    char c;
+
+    m_qName = "";
 
     int length = *buffer++;
     while (length != 0) {
-        for (int i = 0; i < length; i++) {
-            char c = *buffer++;
-            m_qName.append(1, c);
+        for (i = 0; i < length; i++) {
+            c = *buffer++;
+            m_qName += c;
         }
         length = *buffer++;
-        if (length != 0) m_qName.append(1,'.');
+        if (length != 0) m_qName += '.';
     }
 
     query_len = m_qName.length() + 2 + 4;
@@ -102,9 +105,12 @@ int Dns::code(char* buffer)
 {
     char* bufferBegin = buffer;
     char* start_hdr = buffer;
+    uint32_t intip;
 
-    char cstr[256] = {0};
-    std::strcpy(cstr, domain_ip_.c_str());
+    domain_ip_len_ = domain_ip_.length();
+    std::strncpy(cstr, domain_ip_.c_str(), domain_ip_len_);
+    cstr[domain_ip_len_] = '\0';
+
     dns_hdr.ancount = 0;
 
     //code_hdr(buffer);
@@ -117,7 +123,6 @@ int Dns::code(char* buffer)
     m_ra.r_zone = 0xc00c;
     m_ra.r_ttl = 0;
     m_ra.r_size = 4;
-    uint32_t intip;
 
     char* p = std::strtok(cstr, ",");
     while (p) {
@@ -141,29 +146,31 @@ int Dns::code(char* buffer)
     }
 
     /* Code Additional section */
-    buffer[0] = opt.opt_name;
-    buffer++;
-    put16bits(buffer, opt.opt_type);
-    opt.opt_udpsize = 512;
-    put16bits(buffer, opt.opt_udpsize);
-    put32bits(buffer, opt.opt_ttl);
+    if (have_edns) {
+        buffer[0] = opt.opt_name;
+        buffer++;
+        put16bits(buffer, opt.opt_type);
+        opt.opt_udpsize = 512;
+        put16bits(buffer, opt.opt_udpsize);
+        put32bits(buffer, opt.opt_ttl);
 
-    if (opt.rdlen)
-        opt.rdlen = 12;
-    put16bits(buffer, opt.rdlen);
-    
-    if (opt.rdlen) {
-        put16bits(buffer, eo.opt_code);
-        put16bits(buffer, eo.opt_len);
-        put16bits(buffer, eo.family);
-        buffer[0] = eo.source_netmask;
-        buffer[1] = eo.scope_netmask;
-        buffer += 2;
-        buffer[0] = (eo.sub_addr & 0xFF);
-        buffer[1] = (eo.sub_addr & 0xFF00) >> 8;
-        buffer[2] = (eo.sub_addr & 0xFF0000) >> 16;
-        buffer[3] = (eo.sub_addr & 0xFF000000) >> 24;
-        buffer += 4;
+        if (opt.rdlen)
+            opt.rdlen = 12;
+        put16bits(buffer, opt.rdlen);
+        
+        if (opt.rdlen) {
+            put16bits(buffer, eo.opt_code);
+            put16bits(buffer, eo.opt_len);
+            put16bits(buffer, eo.family);
+            buffer[0] = eo.source_netmask;
+            buffer[1] = eo.scope_netmask;
+            buffer += 2;
+            buffer[0] = (eo.sub_addr & 0xFF);
+            buffer[1] = (eo.sub_addr & 0xFF00) >> 8;
+            buffer[2] = (eo.sub_addr & 0xFF0000) >> 16;
+            buffer[3] = (eo.sub_addr & 0xFF000000) >> 24;
+            buffer += 4;
+        }
     }
 
     code_hdr(start_hdr);
@@ -196,14 +203,14 @@ void Dns::code_domain(char*& buffer, const std::string& domain)
 
     while ((end = domain.find('.', start)) != std::string::npos) {
         *buffer++ = end - start; // label length octet
-        for (int i=start; i<end; i++) {
+        for (unsigned i=start; i<end; i++) {
             *buffer++ = domain[i]; // label octets
         }
         start = end + 1; // Skip '.'
     }
 
     *buffer++ = domain.size() - start; // last label length octet
-    for (int i=start; i<domain.size(); i++) {
+    for (unsigned i=start; i<domain.size(); i++) {
         *buffer++ = domain[i]; // last label octets
     }
 

@@ -1,5 +1,4 @@
 #include <unordered_map>
-#include <iostream>
 
 #include <rte_ether.h>
 
@@ -56,16 +55,14 @@ unsigned
 Decoder::process_pkts(struct rte_mbuf *m)
 {
     struct ether_hdr* ehdr;
-    uint8_t mac_dst_addr[ETHER_ADDR_LEN];
-    uint8_t mac_src_addr[ETHER_ADDR_LEN];
+    //uint8_t mac_dst_addr[ETHER_ADDR_LEN];
+    //uint8_t mac_src_addr[ETHER_ADDR_LEN];
 
     struct ipv4_hdr *ip_hdr;
     uint32_t ip_dst, ip_src;
 
     struct udp_hdr *udp_hdr;
-    uint16_t port_src, port_dst;
-
-    struct dnshdr *dns_hdr;
+    uint16_t port_dst;
 
     unsigned txpkts = 0;
 
@@ -91,7 +88,7 @@ Decoder::process_pkts(struct rte_mbuf *m)
         {
             udp_hdr = (struct udp_hdr *)((unsigned char *)ip_hdr + sizeof(struct ipv4_hdr));
             port_dst = rte_be_to_cpu_16(udp_hdr->dst_port);
-            port_src = rte_be_to_cpu_16(udp_hdr->src_port);
+            //port_src = rte_be_to_cpu_16(udp_hdr->src_port);
 
             if (port_dst != 53) {
                 return txpkts;
@@ -116,9 +113,9 @@ Decoder::process_pkts(struct rte_mbuf *m)
             dns.set_domain_ip_group(domain_ip);
 
             if (logger->enabled)
-                logger->log_info("[info] qtype=A " "domain=%s "
-                        "answer=%s " "src_ip=%s sub_ip=%s",
-                        qName.c_str(), domain_ip.c_str(), ip, sub_addr);
+                logger->log_info("[info] qtype=A, domain=%s, "
+                        "answer=%s, src_ip=%s, sub_ip=%s",
+                        qName.c_str(), domain_ip.c_str(), ip, sub_ip);
 
             struct rte_mbuf  *pkt;
             struct ether_hdr *eth_hdr = ehdr;
