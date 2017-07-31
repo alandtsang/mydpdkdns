@@ -16,6 +16,7 @@
 #include <unordered_map>
 #include <memory>
 #include <vector>
+#include <ctime>
 #include <iomanip>
 
 #include <netinet/in.h>
@@ -222,9 +223,14 @@ uint32_t get_netorder_ip(const char *ip)
 static void
 kni_ingress(struct kni_port_params *p)
 {
-	uint8_t i, j, port_id;
-	unsigned nb_rx, num;
+	unsigned nb_rx;
 	int32_t f_stop;
+
+    struct timespec nano;
+    nano.tv_sec = 0;
+    nano.tv_nsec = 1000;
+
+    struct rte_mbuf *pkts_burst[PKT_BURST_SZ];
 	struct rte_ring *rx_ring;
 
 	if (unlikely(p == NULL))
@@ -237,12 +243,12 @@ kni_ingress(struct kni_port_params *p)
         if (unlikely(f_stop))
 			break;
 
-	    struct rte_mbuf *pkts_burst[PKT_BURST_SZ];
-
 	    /* Burst rx from eth */
 		nb_rx = rte_eth_rx_burst(0, 0, pkts_burst, PKT_BURST_SZ);
-		if (unlikely(nb_rx == 0))
+		if (unlikely(nb_rx == 0)) {
+            nanosleep(&nano, NULL);
 		    continue;
+        }
 
         unsigned int sent = rte_ring_sp_enqueue_burst(rx_ring, (void * const *)pkts_burst, nb_rx);
         if (unlikely(sent < nb_rx)) {
@@ -260,7 +266,12 @@ kni_egress(struct kni_port_params *p)
 {
 	unsigned nb_rx, num;
 	int32_t f_stop;
-	uint32_t nb_ports;
+
+    struct timespec nano;
+    nano.tv_sec = 0;
+    nano.tv_nsec = 1000;
+
+    struct rte_mbuf *pkts_burst[PKT_BURST_SZ];
 	struct rte_ring *kni_ring;
 
 	if (unlikely(p == NULL))
@@ -273,9 +284,9 @@ kni_egress(struct kni_port_params *p)
         if (unlikely(f_stop))
 			break;
 
-	    struct rte_mbuf *pkts_burst[PKT_BURST_SZ];
 		nb_rx = rte_ring_sc_dequeue_burst(kni_ring, (void **)pkts_burst, PKT_BURST_SZ);
 		if (unlikely(nb_rx == 0)) {
+            nanosleep(&nano, NULL);
 			continue;
 		}
 
@@ -290,10 +301,16 @@ kni_egress(struct kni_port_params *p)
 static void
 ring_to_kni(void *arg)
 {
-	int j;
+	uint8_t j;
 	int32_t f_stop;
+
+    struct timespec nano;
+    nano.tv_sec = 0;
+    nano.tv_nsec = 1000;
+
 	unsigned ret, sent;
 	uint32_t nb_rx;
+	struct rte_mbuf *pkts_burst[PKT_BURST_SZ];
 	struct rte_ring *rx_ring;
 	struct rte_ring *tx_ring;
 	struct rte_ring *kni_ring;
@@ -309,9 +326,9 @@ ring_to_kni(void *arg)
         if (unlikely(f_stop))
 			break;
 
-	    struct rte_mbuf *pkts_burst[PKT_BURST_SZ];
 		nb_rx = rte_ring_sc_dequeue_burst(rx_ring, (void **)pkts_burst, PKT_BURST_SZ);
 		if (unlikely(nb_rx == 0)) {
+            nanosleep(&nano, NULL);
 			continue;
 		}
 
@@ -363,8 +380,13 @@ send_to_eth(void *arg)
 {
 	uint8_t port_id;
 	int32_t f_stop;
-	int i, j;
+
+    struct timespec nano;
+    nano.tv_sec = 0;
+    nano.tv_nsec = 1000;
+
 	uint16_t nb_tx, num;
+	struct rte_mbuf *pkts_burst[PKT_BURST_SZ];
 	struct rte_ring *tx_ring;
 
 	struct kni_port_params *p = (struct kni_port_params *) arg;
@@ -374,8 +396,6 @@ send_to_eth(void *arg)
 		f_stop = rte_atomic32_read(&kni_stop);
         if (unlikely(f_stop))
 			break;
-
-	    struct rte_mbuf *pkts_burst[PKT_BURST_SZ];
 
 		/* Burst rx from kni */
 		num = rte_kni_rx_burst(p->kni, pkts_burst, PKT_BURST_SZ);
@@ -393,15 +413,18 @@ send_to_eth(void *arg)
 
         tx_ring = p->tx_ring;
         num = rte_ring_sc_dequeue_burst(tx_ring, (void **)pkts_burst, PKT_BURST_SZ);
-        if (likely(num)) {
-            /* Burst tx to eth */
-            nb_tx = rte_eth_tx_burst(port_id, 0, pkts_burst, num);
-            total_send_out += num;
-            if (unlikely(nb_tx < num)) {
-                /* Free mbufs not tx to NIC */
-                std::cout << "dequeue error\n";
-                kni_burst_free_mbufs(&pkts_burst[nb_tx], num - nb_tx);
-            }
+        if (unlikely(num == 0)) {
+            nanosleep(&nano, NULL);
+            continue;
+        }
+
+        /* Burst tx to eth */
+        nb_tx = rte_eth_tx_burst(port_id, 0, pkts_burst, num);
+        total_send_out += num;
+        if (unlikely(nb_tx < num)) {
+            /* Free mbufs not tx to NIC */
+            std::cout << "dequeue error\n";
+            kni_burst_free_mbufs(&pkts_burst[nb_tx], num - nb_tx);
         }
     }
 }
@@ -410,7 +433,6 @@ static int
 main_loop(__rte_unused void *arg)
 {
 	uint8_t i, nb_ports = rte_eth_dev_count();
-	int32_t f_stop;
 	const unsigned lcore_id = rte_lcore_id();
 	enum lcore_rxtx {
 		LCORE_NONE,
@@ -497,7 +519,7 @@ parse_unsigned(const char *portmask)
 static void
 print_config(void)
 {
-	uint32_t i, j;
+	uint32_t i;
 	struct kni_port_params **p = kni_port_params_array;
 
 	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
@@ -524,7 +546,7 @@ parse_config(const char *arg)
 		FLD_LCORE_TX,
 		_NUM_FLD = KNI_MAX_KTHREAD + 3,
 	};
-	int i, j, nb_token;
+	int i, nb_token;
 	char *str_fld[_NUM_FLD];
 	unsigned long int_fld[_NUM_FLD];
 	uint8_t port_id, nb_kni_port_params = 0;
@@ -752,7 +774,6 @@ static void
 init_kni(void)
 {
 	unsigned int num_of_kni_ports = 0, i;
-	struct kni_port_params **params = kni_port_params_array;
 
 	/* Calculate the maximum number of KNI interfaces that will be used */
 	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
@@ -939,11 +960,9 @@ kni_config_network_interface(uint8_t port_id, uint8_t if_up)
 static int
 kni_alloc(uint8_t port_id)
 {
-	uint8_t i;
 	struct rte_kni *kni;
 	struct rte_kni_conf conf;
 	struct kni_port_params **params = kni_port_params_array;
-	struct lcore_rx_queue *lrq;
 
 	if (port_id >= RTE_MAX_ETHPORTS || !params[port_id])
 		return -1;
@@ -986,7 +1005,6 @@ kni_alloc(uint8_t port_id)
 static int
 kni_free_kni(uint8_t port_id)
 {
-	uint8_t i;
 	struct kni_port_params **p = kni_port_params_array;
 
 	if (port_id >= RTE_MAX_ETHPORTS || !p[port_id])
@@ -1058,8 +1076,8 @@ main(int argc, char** argv)
 	unsigned i;
 
 	/* Associate signal_hanlder function with USR signals */
-	signal(SIGINT, signal_handler);
     signal(SIGUSR1, signal_handler);
+	signal(SIGINT, signal_handler);
 
     logger = dnslog::Logger::getLogger();
 
@@ -1103,7 +1121,6 @@ main(int argc, char** argv)
 
 	init_ring();
 
-    std::cout << "before Initialise each port\n";
 	/* Initialise each port */
 	for (port = 0; port < nb_sys_ports; port++) {
 		/* Skip ports that are not enabled */
@@ -1118,7 +1135,6 @@ main(int argc, char** argv)
 		kni_alloc(port);
 	}
 
-    std::cout << "after Initialise each port\n";
 	check_all_ports_link_status(nb_sys_ports, ports_mask);
 
 	/* Launch per-lcore function on every lcore */
@@ -1138,7 +1154,6 @@ main(int argc, char** argv)
 #ifdef RTE_LIBRTE_XEN_DOM0
 	rte_kni_close();
 #endif
-	int j;
 	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
 		if (kni_port_params_array[i]) {
 			rte_free(kni_port_params_array[i]);

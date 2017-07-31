@@ -24,5 +24,4 @@ struct edns0opt {
 
 #pragma pack()
 
-
 #endif /*INCLUDE_EDNS_H_ */
