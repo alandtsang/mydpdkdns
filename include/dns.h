@@ -241,9 +241,10 @@ public:
 	int code(char* buffer);
 
     /* edns */
-    bool have_edns;
+    bool is_csubnet;
     char client_ip[16];
     struct edns0opt eo;
+    struct cookieopt co;
 
 private:
 	void decode_hdr(const char* buffer);

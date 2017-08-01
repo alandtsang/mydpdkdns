@@ -25,7 +25,7 @@ void Dns::decode(const char* buffer)
     //std::cout << "m_qType:" << m_qType << "\n";
     //std::cout << "m_qClass:" << m_qClass << "\n";
 
-    have_edns = false;
+    is_csubnet = false;
     if (dns_hdr.adcount)
         decode_additional(buffer);
 }
@@ -79,9 +79,11 @@ void Dns::decode_additional(const char* buffer)
 
 void Dns::decode_option(const char* p)
 {
-    eo = *(struct edns0opt*) p;
-    if (eo.opt_code == 0x0800) {
-        have_edns = true;
+    uint16_t tmp = *(uint16_t*) p;
+    if (tmp == 0x0800) {
+        is_csubnet = true;
+
+        eo = *(struct edns0opt*) p;
         eo.opt_code = EXTRACT_16BITS(&eo.opt_code);
         eo.opt_len = EXTRACT_16BITS(&eo.opt_len);
         eo.family = EXTRACT_16BITS(&eo.family);
@@ -93,8 +95,10 @@ void Dns::decode_option(const char* p)
                   << ", smask=" << (uint16_t)eo.source_netmask
                   << ", scropmask=" << (uint16_t)eo.scope_netmask
                   << ", client_ip=" << client_ip << "\n";*/
-    } else if (eo.opt_code == 0x0a00) {
-        //TODO: COOKIE
+    } else if (tmp == 0x0a00) {
+        co = *(struct cookieopt*) p;
+        co.opt_code = EXTRACT_16BITS(&co.opt_code);
+        co.opt_len = EXTRACT_16BITS(&co.opt_len);
     }
 }
 
@@ -146,7 +150,7 @@ int Dns::code(char* buffer)
     }
 
     /* Code Additional section */
-    if (have_edns) {
+    if (dns_hdr.adcount) {
         buffer[0] = opt.opt_name;
         buffer++;
         put16bits(buffer, opt.opt_type);
@@ -157,19 +161,29 @@ int Dns::code(char* buffer)
         if (opt.rdlen)
             opt.rdlen = 12;
         put16bits(buffer, opt.rdlen);
-        
+            
+
         if (opt.rdlen) {
-            put16bits(buffer, eo.opt_code);
-            put16bits(buffer, eo.opt_len);
-            put16bits(buffer, eo.family);
-            buffer[0] = eo.source_netmask;
-            buffer[1] = eo.scope_netmask;
-            buffer += 2;
-            buffer[0] = (eo.sub_addr & 0xFF);
-            buffer[1] = (eo.sub_addr & 0xFF00) >> 8;
-            buffer[2] = (eo.sub_addr & 0xFF0000) >> 16;
-            buffer[3] = (eo.sub_addr & 0xFF000000) >> 24;
-            buffer += 4;
+            if (is_csubnet) {
+                put16bits(buffer, eo.opt_code);
+                put16bits(buffer, eo.opt_len);
+                put16bits(buffer, eo.family);
+                buffer[0] = eo.source_netmask;
+                buffer[1] = eo.scope_netmask;
+                buffer += 2;
+                buffer[0] = (eo.sub_addr & 0xFF);
+                buffer[1] = (eo.sub_addr & 0xFF00) >> 8;
+                buffer[2] = (eo.sub_addr & 0xFF0000) >> 16;
+                buffer[3] = (eo.sub_addr & 0xFF000000) >> 24;
+                buffer += 4;
+            } else {
+                put16bits(buffer, co.opt_code);
+                put16bits(buffer, co.opt_len);
+                for (unsigned i = 0; i < 8; i++) {
+                    buffer[i] = co.client_cookie[i];
+                }
+                buffer += 8;
+            }
         }
     }
 

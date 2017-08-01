@@ -102,7 +102,7 @@ Decoder::process_pkts(struct rte_mbuf *m)
             /* Get domain group */
             qName = dns.get_domain_name();
 
-            if (dns.have_edns)
+            if (dns.is_csubnet)
                 memcpy(ip, dns.client_ip, 16);
             else
                 inet_ntop(AF_INET, &ip_hdr->src_addr, ip, 16);
