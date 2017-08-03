@@ -80,7 +80,7 @@ void Dns::decode_additional(const char* buffer)
 void Dns::decode_option(const char* p)
 {
     uint16_t tmp = *(uint16_t*) p;
-    if (tmp == 0x0800) {
+    if (tmp == 0x0800 || tmp == 0xfa50) {
         is_csubnet = true;
 
         eo = *(struct edns0opt*) p;
