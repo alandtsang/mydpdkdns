@@ -128,28 +128,10 @@ static struct rte_eth_conf port_conf;
 
 /* Mempool for mbufs */
 static struct rte_mempool* pktmbuf_pool = NULL;
-static struct rte_mempool* pktmbuf_pool2 = NULL;
 
 /* Mask of enabled ports */
 static uint32_t ports_mask = 0;
 
-/* Structure type for recording kni interface specific stats */
-struct kni_interface_stats {
-	/* number of pkts received from NIC, and sent to KNI */
-	uint64_t rx_packets;
-
-	/* number of pkts received from NIC, but failed to send to KNI */
-	uint64_t rx_dropped;
-
-	/* number of pkts received from KNI, and sent to NIC */
-	uint64_t tx_packets;
-
-	/* number of pkts received from KNI, but failed to send to NIC */
-	uint64_t tx_dropped;
-};
-
-/* kni device statistics array */
-static struct kni_interface_stats kni_stats[RTE_MAX_ETHPORTS];
 
 static int kni_change_mtu(uint8_t port_id, unsigned new_mtu);
 static int kni_config_network_interface(uint8_t port_id, uint8_t if_up);
@@ -402,11 +384,9 @@ send_to_eth(void *arg)
         if (likely(num)) {
             /* Burst tx to eth */
             nb_tx = rte_eth_tx_burst(port_id, 0, pkts_burst, num);
-            kni_stats[port_id].tx_packets += nb_tx;
             if (unlikely(nb_tx < num)) {
                 /* Free mbufs not tx to NIC */
                 kni_burst_free_mbufs(&pkts_burst[nb_tx], num - nb_tx);
-                kni_stats[port_id].tx_dropped += num - nb_tx;
             }
         }
 
@@ -992,7 +972,7 @@ kni_alloc(uint8_t port_id)
 		ops.change_mtu = kni_change_mtu;
 		ops.config_network_if = kni_config_network_interface;
 
-		kni = rte_kni_alloc(pktmbuf_pool2, &conf, &ops);
+		kni = rte_kni_alloc(pktmbuf_pool, &conf, &ops);
 
 	if (!kni)
 		rte_exit(EXIT_FAILURE, "Fail to create kni for "
@@ -1051,11 +1031,6 @@ pool_create()
 		MEMPOOL_CACHE_SZ, 0, RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id());
 	if (pktmbuf_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Could not initialise mbuf pool\n");
-
-	pktmbuf_pool2 = rte_pktmbuf_pool_create("kni_pool", NB_MBUF,
-		MEMPOOL_CACHE_SZ, 0, RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id());
-	if (pktmbuf_pool2 == NULL)
-		rte_exit(EXIT_FAILURE, "Could not initialise kni pool\n");
 }
 
 static void
@@ -1063,8 +1038,6 @@ pool_free()
 {
     if (pktmbuf_pool)
         rte_mempool_free(pktmbuf_pool);
-    if (pktmbuf_pool2)
-        rte_mempool_free(pktmbuf_pool2);
 }
 
 /* Initialise ports/queues etc. and start main loop on each core */
