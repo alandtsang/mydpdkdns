@@ -132,11 +132,10 @@ static struct rte_mempool* pktmbuf_pool = NULL;
 /* Mask of enabled ports */
 static uint32_t ports_mask = 0;
 
-
 static int kni_change_mtu(uint8_t port_id, unsigned new_mtu);
 static int kni_config_network_interface(uint8_t port_id, uint8_t if_up);
 
-static rte_atomic32_t kni_stop = RTE_ATOMIC32_INIT(0);
+volatile bool force_quit;
 
 uint32_t  local_ip;
 
@@ -171,8 +170,8 @@ signal_handler(int signum)
         std::cout << "total_dns_pkts:" << worker.decoder.total_dns_pkts << "\n";
         std::cout << "total_enqueue :" << worker.decoder.total_enqueue << "\n";
         std::cout << "total_send_out:" << total_send_out << "\n";
-		rte_atomic32_inc(&kni_stop);
-		return;
+
+        force_quit = true;
 	} else if (signum == SIGUSR1) {
         stats_display(0);
     }
@@ -206,7 +205,6 @@ static void
 kni_ingress(struct kni_port_params *p)
 {
 	unsigned nb_rx;
-	int32_t f_stop;
 
     struct timespec nano;
     nano.tv_sec = 0;
@@ -220,11 +218,7 @@ kni_ingress(struct kni_port_params *p)
 
     rx_ring = p->rx_ring;
 
-	while (1) {
-		f_stop = rte_atomic32_read(&kni_stop);
-        if (unlikely(f_stop))
-			break;
-
+    while (!force_quit) {
 	    /* Burst rx from eth */
 		nb_rx = rte_eth_rx_burst(0, 0, pkts_burst, PKT_BURST_SZ);
 		if (unlikely(nb_rx == 0)) {
@@ -247,7 +241,6 @@ static void
 kni_egress(struct kni_port_params *p)
 {
 	unsigned nb_rx, num;
-	int32_t f_stop;
 
     struct timespec nano;
     nano.tv_sec = 0;
@@ -261,11 +254,7 @@ kni_egress(struct kni_port_params *p)
 
 	kni_ring = p->kni_ring;
 
-	while (1) {
-		f_stop = rte_atomic32_read(&kni_stop);
-        if (unlikely(f_stop))
-			break;
-
+    while (!force_quit) {
 		nb_rx = rte_ring_sc_dequeue_burst(kni_ring, (void **)pkts_burst, PKT_BURST_SZ);
 		if (unlikely(nb_rx == 0)) {
             nanosleep(&nano, NULL);
@@ -284,7 +273,6 @@ static void
 ring_to_kni(void *arg)
 {
 	uint8_t j;
-	int32_t f_stop;
 
     struct timespec nano;
     nano.tv_sec = 0;
@@ -303,11 +291,7 @@ ring_to_kni(void *arg)
 	tx_ring = p->tx_ring;
 	kni_ring = p->kni_ring;
 
-	while (1) {
-		f_stop = rte_atomic32_read(&kni_stop);
-        if (unlikely(f_stop))
-			break;
-
+    while (!force_quit) {
 		nb_rx = rte_ring_sc_dequeue_burst(rx_ring, (void **)pkts_burst, PKT_BURST_SZ);
 		if (unlikely(nb_rx == 0)) {
             nanosleep(&nano, NULL);
@@ -361,7 +345,6 @@ static void
 send_to_eth(void *arg)
 {
 	uint8_t port_id;
-	int32_t f_stop;
 
     struct timespec nano;
     nano.tv_sec = 0;
@@ -374,11 +357,7 @@ send_to_eth(void *arg)
 	struct kni_port_params *p = (struct kni_port_params *) arg;
 	port_id = p->port_id;
 
-	while (1) {
-		f_stop = rte_atomic32_read(&kni_stop);
-        if (unlikely(f_stop))
-			break;
-
+    while (!force_quit) {
 		/* Burst rx from kni */
 		num = rte_kni_rx_burst(p->kni, pkts_burst, PKT_BURST_SZ);
         if (likely(num)) {
@@ -1049,6 +1028,7 @@ main(int argc, char** argv)
 	unsigned i;
 
 	/* Associate signal_hanlder function with USR signals */
+    force_quit = false;
     signal(SIGUSR1, signal_handler);
 	signal(SIGINT, signal_handler);
 
