@@ -219,7 +219,7 @@ kni_ingress(struct kni_port_params *p)
     rx_ring = p->rx_ring;
 
     while (!force_quit) {
-	    /* Burst rx from eth */
+        /* Burst rx from eth */
 		nb_rx = rte_eth_rx_burst(0, 0, pkts_burst, PKT_BURST_SZ);
 		if (unlikely(nb_rx == 0)) {
             nanosleep(&nano, NULL);
@@ -311,14 +311,13 @@ ring_to_kni(void *arg)
 			if (ret) {
 				worker.decoder.total_enqueue++;
 				sent = rte_ring_sp_enqueue_burst(tx_ring, (void* const*)&pkts_burst[j], ret);
-			} else {
-				sent = rte_ring_sp_enqueue_burst(kni_ring, (void* const*)&pkts_burst[j], 1);
+            } else {
+                sent = rte_ring_sp_enqueue_burst(kni_ring, (void* const*)&pkts_burst[j], 1);
 			}
 
 			if (unlikely(sent < ret)) {
-				std::cout << "enqueue error" << "\n";
-				if (sent < ret)
-					rte_pktmbuf_free(pkts_burst[sent]);
+                std::cout << "enqueue error" << "\n";
+                rte_pktmbuf_free(pkts_burst[sent]);
 			}
 		}
 
@@ -328,14 +327,13 @@ ring_to_kni(void *arg)
 			if (ret) {
 				worker.decoder.total_enqueue++;
 				sent = rte_ring_sp_enqueue_burst(tx_ring, (void* const*)&pkts_burst[j], ret);
-			} else {
+            } else {
 				sent = rte_ring_sp_enqueue_burst(kni_ring, (void* const*)&pkts_burst[j], 1);
 			}
 
 			if (unlikely(sent < ret)) {
-				std::cout << "enqueue error" << "\n";
-				if (sent < ret)
-					rte_pktmbuf_free(pkts_burst[sent]);
+                std::cout << "enqueue error" << "\n";
+                rte_pktmbuf_free(pkts_burst[sent]);
 			}
 		}
 	}
@@ -715,7 +713,6 @@ init_ring()
                 rte_exit(EXIT_FAILURE, "Cannot create TX ring, %s, %s():%d\n", 
                         rte_strerror(rte_errno), __func__, __LINE__);
             kni_port_params_array[i]->tx_ring = tx_ring;
-
 
             snprintf(name, sizeof(name), "ring_kni_%u", i);
             kni_ring = rte_ring_create(name, 1024 * 1024, rte_socket_id(), RING_F_SP_ENQ | RING_F_SC_DEQ);
@@ -1107,6 +1104,8 @@ main(int argc, char** argv)
 #ifdef RTE_LIBRTE_XEN_DOM0
 	rte_kni_close();
 #endif
+    cleanup_ring();
+
 	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
 		if (kni_port_params_array[i]) {
 			rte_free(kni_port_params_array[i]);
@@ -1114,7 +1113,6 @@ main(int argc, char** argv)
 		}
 	}
 
-    cleanup_ring();
     pool_free();
 
 	return 0;
