@@ -55,12 +55,7 @@ unsigned
 Decoder::process_pkts(struct rte_mbuf *m)
 {
     struct ether_hdr* ehdr;
-    //uint8_t mac_dst_addr[ETHER_ADDR_LEN];
-    //uint8_t mac_src_addr[ETHER_ADDR_LEN];
-
     struct ipv4_hdr *ip_hdr;
-    uint32_t ip_dst, ip_src;
-
     struct udp_hdr *udp_hdr;
     uint16_t port_dst;
 
@@ -72,9 +67,6 @@ Decoder::process_pkts(struct rte_mbuf *m)
     if (ehdr->ether_type != rte_cpu_to_be_16(ETHER_TYPE_IPv4)) {
         return txpkts;
     }
-
-//  rte_memcpy(mac_dst_addr, ehdr->d_addr.addr_bytes, ETHER_ADDR_LEN);
-//  rte_memcpy(mac_src_addr, ehdr->s_addr.addr_bytes, ETHER_ADDR_LEN);
 
     ip_hdr = rte_pktmbuf_mtod_offset(m, struct ipv4_hdr *, sizeof(struct ether_hdr));
     if (ip_hdr->dst_addr != local_ip)
@@ -88,8 +80,6 @@ Decoder::process_pkts(struct rte_mbuf *m)
         {
             udp_hdr = (struct udp_hdr *)((unsigned char *)ip_hdr + sizeof(struct ipv4_hdr));
             port_dst = rte_be_to_cpu_16(udp_hdr->dst_port);
-            //port_src = rte_be_to_cpu_16(udp_hdr->src_port);
-
             if (port_dst != 53) {
                 return txpkts;
             }
@@ -117,25 +107,15 @@ Decoder::process_pkts(struct rte_mbuf *m)
                         "answer=%s, src_ip=%s, sub_ip=%s",
                         qName.c_str(), domain_ip.c_str(), ip, sub_ip);
 
-            struct rte_mbuf  *pkt;
-
-            pkt = m;
+            struct rte_mbuf* pkt = m;
             pkt->next = NULL;
 
             /* Ethernet */
             swap_addr(&ehdr->s_addr, &ehdr->d_addr);
 
             /* IP */
-            memset(ip_hdr, 0, sizeof(*ip_hdr));
-            ip_hdr->version_ihl     = IP_VHL_DEF;
-            ip_hdr->type_of_service = 0;
-            ip_hdr->fragment_offset = 0;
-            ip_hdr->time_to_live    = IP_DEFTTL;
-            ip_hdr->next_proto_id   = IPPROTO_UDP;
-            ip_hdr->packet_id       = 0;
-            ip_hdr->src_addr        = rte_cpu_to_be_32(ip_dst);
-            ip_hdr->dst_addr        = rte_cpu_to_be_32(ip_src);
-            //swap_ipaddr(&ip_hdr->src_addr, &ip_hdr->dst_addr);
+            ip_hdr->hdr_checksum = 0;
+            swap_ipaddr(&ip_hdr->src_addr, &ip_hdr->dst_addr);
 
             /* UDP */
             swap_port(&udp_hdr->src_port, &udp_hdr->dst_port);
