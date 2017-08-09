@@ -27,7 +27,6 @@ public:
     std::shared_ptr<dnslog::Logger> logger;
 
     uint64_t total_dns_pkts;
-    uint64_t total_enqueue;
 
 private:
     inline uint16_t ip_sum(const unaligned_uint16_t *hdr, int hdr_len);

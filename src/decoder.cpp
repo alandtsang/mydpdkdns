@@ -118,20 +118,14 @@ Decoder::process_pkts(struct rte_mbuf *m)
                         qName.c_str(), domain_ip.c_str(), ip, sub_ip);
 
             struct rte_mbuf  *pkt;
-            struct ether_hdr *eth_hdr = ehdr;
 
             pkt = m;
             pkt->next = NULL;
 
             /* Ethernet */
-//          eth_hdr = rte_pktmbuf_mtod(pkt, struct ether_hdr *);
-//          rte_memcpy(&eth_hdr->d_addr, mac_src_addr, ETHER_ADDR_LEN);
-//          rte_memcpy(&eth_hdr->s_addr, mac_dst_addr, ETHER_ADDR_LEN);
-//          eth_hdr->ether_type = rte_cpu_to_be_16(ETHER_TYPE_IPv4);
-            swap_addr(&eth_hdr->s_addr, &eth_hdr->d_addr);
+            swap_addr(&ehdr->s_addr, &ehdr->d_addr);
 
             /* IP */
-            //ip_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
             memset(ip_hdr, 0, sizeof(*ip_hdr));
             ip_hdr->version_ihl     = IP_VHL_DEF;
             ip_hdr->type_of_service = 0;
@@ -144,28 +138,17 @@ Decoder::process_pkts(struct rte_mbuf *m)
             //swap_ipaddr(&ip_hdr->src_addr, &ip_hdr->dst_addr);
 
             /* UDP */
-            //udp_hdr = (struct udp_hdr *)(ip_hdr + 1);
-            //udp_hdr->src_port     = rte_cpu_to_be_16(port_dst);
-            //udp_hdr->dst_port     = rte_cpu_to_be_16(port_src);
             swap_port(&udp_hdr->src_port, &udp_hdr->dst_port);
             udp_hdr->dgram_cksum    = 0; /* No UDP checksum. */
 
             /* DNS */
-            //int dnslen = dns.code(buffstart);
             int dnslen = dns.code(buffstart);
 
-            pkt->nb_segs        = 1;
-            //pkt->pkt_len      = 14+20+8+12+pbuf - bufferBegin;
-            pkt->pkt_len        = 14+20+8+dnslen;
+            pkt->pkt_len        = 14 + 20 + 8 + dnslen;
             pkt->data_len       = pkt->pkt_len;
-            ip_hdr->total_length = RTE_CPU_TO_BE_16(pkt->pkt_len - sizeof(*eth_hdr));
+            ip_hdr->total_length = RTE_CPU_TO_BE_16(pkt->pkt_len - sizeof(*ehdr));
             ip_hdr->hdr_checksum = ip_sum((unaligned_uint16_t *)ip_hdr, sizeof(*ip_hdr));
-            udp_hdr->dgram_len  = RTE_CPU_TO_BE_16(pkt->pkt_len - sizeof(*eth_hdr) - sizeof(*ip_hdr));
-            //pkt->ol_flags     = ol_flags;
-            //pkt->vlan_tci     = vlan_tci;
-            //pkt->vlan_tci_outer   = vlan_tci_outer;
-            pkt->l2_len         = sizeof(struct ether_hdr);
-            pkt->l3_len         = sizeof(struct ipv4_hdr);
+            udp_hdr->dgram_len  = RTE_CPU_TO_BE_16(pkt->pkt_len - sizeof(*ehdr) - sizeof(*ip_hdr));
 
             total_dns_pkts++;
             return 1;

@@ -167,9 +167,8 @@ signal_handler(int signum)
 	if (signum == SIGRTMIN || signum == SIGINT) {
 		printf("The processing is going to stop\n");
 
-        std::cout << "total_dns_pkts:" << worker.decoder.total_dns_pkts << "\n";
-        std::cout << "total_enqueue :" << worker.decoder.total_enqueue << "\n";
-        std::cout << "total_send_out:" << total_send_out << "\n";
+        std::cout << "total_in :" << worker.decoder.total_dns_pkts << "\n";
+        std::cout << "total_out:" << total_send_out << "\n";
 
         force_quit = true;
 	} else if (signum == SIGUSR1) {
@@ -309,7 +308,6 @@ ring_to_kni(void *arg)
 
 			ret = worker.decoder.process_pkts(pkts_burst[j]);
 			if (ret) {
-				worker.decoder.total_enqueue++;
 				sent = rte_ring_sp_enqueue_burst(tx_ring, (void* const*)&pkts_burst[j], ret);
             } else {
                 sent = rte_ring_sp_enqueue_burst(kni_ring, (void* const*)&pkts_burst[j], 1);
@@ -325,7 +323,6 @@ ring_to_kni(void *arg)
 		for (; j < nb_rx; j++) {
 			ret = worker.decoder.process_pkts(pkts_burst[j]);
 			if (ret) {
-				worker.decoder.total_enqueue++;
 				sent = rte_ring_sp_enqueue_burst(tx_ring, (void* const*)&pkts_burst[j], ret);
             } else {
 				sent = rte_ring_sp_enqueue_burst(kni_ring, (void* const*)&pkts_burst[j], 1);
