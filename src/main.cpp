@@ -179,7 +179,7 @@ uint32_t get_netorder_ip(const char *ip)
  * Interface to burst rx and enqueue mbufs into rx_q
  */
 static void
-kni_ingress(struct kni_port_params *p)
+rx_thread(struct kni_port_params *p)
 {
 	unsigned nb_rx;
 
@@ -215,7 +215,7 @@ kni_ingress(struct kni_port_params *p)
  * Interface to dequeue mbufs from tx_q and burst tx
  */
 static void
-kni_egress(struct kni_port_params *p)
+kni_thread(struct kni_port_params *p)
 {
 	unsigned nb_rx, num;
 
@@ -247,75 +247,46 @@ kni_egress(struct kni_port_params *p)
 }
 
 static void
-ring_to_kni(void *arg)
+worker_thread(void *arg)
 {
-	uint8_t j;
+    unsigned j, ret, sent;
+    unsigned nb_rx;
 
     struct timespec nano;
     nano.tv_sec = 0;
     nano.tv_nsec = 1000;
 
-	unsigned ret, sent;
-	uint32_t nb_rx;
-	struct rte_mbuf *pkts_burst[PKT_BURST_SZ];
-	struct rte_ring *rx_ring;
-	struct rte_ring *tx_ring;
-	struct rte_ring *kni_ring;
+    struct rte_mbuf *pkts_burst[PKT_BURST_SZ];
+    struct rte_ring *rx_ring, *tx_ring, *kni_ring;
 
-	struct kni_port_params *p = (struct kni_port_params *) arg;
+    struct kni_port_params *p = (struct kni_port_params *) arg;
 
-	rx_ring = p->rx_ring;
-	tx_ring = p->tx_ring;
-	kni_ring = p->kni_ring;
+    rx_ring = p->rx_ring;
+    tx_ring = p->tx_ring;
+    kni_ring = p->kni_ring;
 
     while (!force_quit) {
-		nb_rx = rte_ring_sc_dequeue_burst(rx_ring, (void **)pkts_burst, PKT_BURST_SZ);
-		if (unlikely(nb_rx == 0)) {
+        nb_rx = rte_ring_sc_dequeue_burst(rx_ring, (void **)pkts_burst, PKT_BURST_SZ);
+        if (unlikely(nb_rx == 0)) {
             nanosleep(&nano, NULL);
-			continue;
-		}
+            continue;
+        }
 
-		/* Prefetch first packets */
-		for (j = 0; j < PREFETCH_OFFSET && j < nb_rx; j++) {
-			rte_prefetch0(rte_pktmbuf_mtod(pkts_burst[j], void *));
-		}
+        for (j = 0; j < nb_rx; j++) {
+            ret = worker.decoder.process_pkts(pkts_burst[j]);
+            if (ret)
+                sent = rte_ring_sp_enqueue_burst(tx_ring, (void **)&pkts_burst[j], 1);
+            else
+                sent = rte_ring_sp_enqueue_burst(kni_ring, (void **)&pkts_burst[j], 1);
 
-		/* Prefetch and forward already prefetched packets */
-		for (j = 0; j < (int)(nb_rx - PREFETCH_OFFSET); j++) {
-			rte_prefetch0(rte_pktmbuf_mtod(pkts_burst[j + PREFETCH_OFFSET], void *));
-
-			ret = worker.decoder.process_pkts(pkts_burst[j]);
-			if (ret) {
-				sent = rte_ring_sp_enqueue_burst(tx_ring, (void* const*)&pkts_burst[j], ret);
-            } else {
-                sent = rte_ring_sp_enqueue_burst(kni_ring, (void* const*)&pkts_burst[j], 1);
-			}
-
-			if (unlikely(sent < ret)) {
-                std::cout << "enqueue error" << "\n";
+            if (unlikely(sent < 1))
                 rte_pktmbuf_free(pkts_burst[sent]);
-			}
-		}
-
-		/* Forward remaining prefetched packets */
-		for (; j < nb_rx; j++) {
-			ret = worker.decoder.process_pkts(pkts_burst[j]);
-			if (ret) {
-				sent = rte_ring_sp_enqueue_burst(tx_ring, (void* const*)&pkts_burst[j], ret);
-            } else {
-				sent = rte_ring_sp_enqueue_burst(kni_ring, (void* const*)&pkts_burst[j], 1);
-			}
-
-			if (unlikely(sent < ret)) {
-                std::cout << "enqueue error" << "\n";
-                rte_pktmbuf_free(pkts_burst[sent]);
-			}
-		}
-	}
+        }
+    }
 }
 
 static void
-send_to_eth(void *arg)
+tx_thread(void *arg)
 {
 	uint8_t port_id;
 
@@ -391,22 +362,22 @@ main_loop(__rte_unused void *arg)
 		RTE_LOG(INFO, APP, "Lcore %u is reading from port %d\n",
 					kni_port_params_array[i]->lcore_rx,
 					kni_port_params_array[i]->port_id);
-		kni_ingress(kni_port_params_array[i]);
+		rx_thread(kni_port_params_array[i]);
 	} else if (flag == LCORE_TX) {
 		RTE_LOG(INFO, APP, "Lcore %u is writing to port %d\n",
 					kni_port_params_array[i]->lcore_tx,
 					kni_port_params_array[i]->port_id);
-		kni_egress(kni_port_params_array[i]);
+		kni_thread(kni_port_params_array[i]);
 	} else if (flag == LCORE_WORK) {
 		RTE_LOG(INFO, APP, "Lcore %u is working to port %d\n",
 					kni_port_params_array[i]->lcore_work,
 					kni_port_params_array[i]->port_id);
-		ring_to_kni(kni_port_params_array[i]);
+		worker_thread(kni_port_params_array[i]);
     } else if (flag == LCORE_SEND) {
 		RTE_LOG(INFO, APP, "Lcore %u is sending to port %d\n",
 					kni_port_params_array[i]->lcore_send,
 					kni_port_params_array[i]->port_id);
-		send_to_eth(kni_port_params_array[i]);
+		tx_thread(kni_port_params_array[i]);
 	} else
 		RTE_LOG(INFO, APP, "Lcore %u has nothing to do\n", lcore_id);
 

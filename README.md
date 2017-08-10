@@ -105,10 +105,10 @@ APP: Configure network interface of 0 up
 ### traffic monitoring
 ```
 ./monitor.sh
-port:0  rx:59791 p/s  5321471 bytes/s  tx:59690 p/s  6685280 bytes/s  dropped:0
-port:0  rx:67596 p/s  6016044 bytes/s  tx:67596 p/s  7570752 bytes/s  dropped:0
-port:0  rx:73860 p/s  6573540 bytes/s  tx:73860 p/s  8279488 bytes/s  dropped:0
-port:0  rx:72989 p/s  6495467 bytes/s  tx:72911 p/s  8166032 bytes/s  dropped:0
+port:0  rx:146045 p/s  12998091 bytes/s  tx:145965 p/s  14742465 bytes/s  dropped:0
+port:0  rx:144637 p/s  12872879 bytes/s  tx:144561 p/s  14600661 bytes/s  dropped:0
+port:0  rx:146765 p/s  13062271 bytes/s  tx:146823 p/s  14829123 bytes/s  dropped:0
+port:0  rx:143032 p/s  12730034 bytes/s  tx:142968 p/s  14439768 bytes/s  dropped:0
 ```
 
 
