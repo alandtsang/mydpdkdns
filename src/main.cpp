@@ -1,9 +1,6 @@
 #define __STDC_FORMAT_MACROS
 
 #include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
 #include <sys/queue.h>
 #include <stdarg.h>
 #include <errno.h>
@@ -12,6 +9,8 @@
 #include <iostream>
 #include <string>
 #include <cstring>
+#include <cstdlib>
+#include <cstdint>
 #include <cinttypes>
 #include <memory>
 #include <ctime>
@@ -25,32 +24,13 @@
 #include <unistd.h>
 #include <signal.h>
 
-
-#include <rte_common.h>
-#include <rte_memory.h>
-#include <rte_memcpy.h>
-#include <rte_memzone.h>
-#include <rte_eal.h>
-#include <rte_per_lcore.h>
-#include <rte_launch.h>
-#include <rte_atomic.h>
-#include <rte_lcore.h>
-#include <rte_branch_prediction.h>
-#include <rte_interrupts.h>
-#include <rte_pci.h>
-#include <rte_debug.h>
-#include <rte_ether.h>
 #include <rte_ethdev.h>
-#include <rte_log.h>
-#include <rte_mempool.h>
-#include <rte_mbuf.h>
 #include <rte_string_fns.h>
 #include <rte_cycles.h>
 #include <rte_malloc.h>
 #include <rte_kni.h>
 
 #include <rte_ip.h>
-#include <rte_tcp.h>
 #include <rte_udp.h>
 
 #include "dns.h"
@@ -360,7 +340,6 @@ send_to_eth(void *arg)
                 kni_burst_free_mbufs(&pkts_burst[nb_tx], num - nb_tx);
             }
         }
-
 
         tx_ring = p->tx_ring;
         num = rte_ring_sc_dequeue_burst(tx_ring, (void **)pkts_burst, PKT_BURST_SZ);

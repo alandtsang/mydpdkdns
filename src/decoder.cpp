@@ -54,11 +54,6 @@ void Decoder::swap_port(uint16_t *src, uint16_t *dst) {
 unsigned
 Decoder::process_pkts(struct rte_mbuf *m)
 {
-    struct ether_hdr* ehdr;
-    struct ipv4_hdr* ip_hdr;
-    struct udp_hdr* udp_hdr;
-    uint16_t port_dst;
-
     unsigned txpkts = 0;
 
     ehdr = rte_pktmbuf_mtod(m, struct ether_hdr*);
