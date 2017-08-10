@@ -55,8 +55,8 @@ unsigned
 Decoder::process_pkts(struct rte_mbuf *m)
 {
     struct ether_hdr* ehdr;
-    struct ipv4_hdr *ip_hdr;
-    struct udp_hdr *udp_hdr;
+    struct ipv4_hdr* ip_hdr;
+    struct udp_hdr* udp_hdr;
     uint16_t port_dst;
 
     unsigned txpkts = 0;
@@ -71,9 +71,6 @@ Decoder::process_pkts(struct rte_mbuf *m)
     ip_hdr = rte_pktmbuf_mtod_offset(m, struct ipv4_hdr *, sizeof(struct ether_hdr));
     if (ip_hdr->dst_addr != local_ip)
         return txpkts;
-
-    ip_dst = rte_be_to_cpu_32(ip_hdr->dst_addr);
-    ip_src = rte_be_to_cpu_32(ip_hdr->src_addr);
 
     switch (ip_hdr->next_proto_id) {
         case IPPROTO_UDP:

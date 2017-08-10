@@ -13,9 +13,7 @@
 #include <string>
 #include <cstring>
 #include <cinttypes>
-#include <unordered_map>
 #include <memory>
-#include <vector>
 #include <ctime>
 #include <iomanip>
 
@@ -139,7 +137,6 @@ volatile bool force_quit;
 
 uint32_t  local_ip;
 
-std::unordered_map<std::string, std::string> alldomain;
 std::shared_ptr<dnslog::Logger> logger;
 
 

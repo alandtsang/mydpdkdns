@@ -39,12 +39,7 @@ private:
     struct ipv4_hdr* ip_hdr;
     struct udp_hdr* udp_hdr;
     struct dnshdr* dns_hdr;
-
-    //uint8_t mac_dst_addr[ETHER_ADDR_LEN];
-    //uint8_t mac_src_addr[ETHER_ADDR_LEN];
-    uint32_t ip_dst, ip_src;
-    uint16_t port_src, port_dst;
-
+    uint16_t port_dst;
 
     /* dns info */
     std::string qName;
