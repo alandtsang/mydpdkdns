@@ -46,13 +46,12 @@
 #define MAX_PACKET_SZ           2048
 
 /* Number of mbufs in mempool that is created */
-#define NB_MBUF                 (8192 * 16)
+#define NB_MBUF                 8192
 
 /* How many packets to attempt to read from NIC in one go */
 #define PKT_BURST_SZ            32
 
 /* How many objects (mbufs) to keep in per-lcore mempool cache */
-//#define MEMPOOL_CACHE_SZ        PKT_BURST_SZ
 #define MEMPOOL_CACHE_SZ        250
 
 /* Number of RX ring descriptors */
@@ -60,6 +59,8 @@
 
 /* Number of TX ring descriptors */
 #define NB_TXD                  512
+
+#define RING_SIZE               (1024 * 1024)
 
 /* Total octets in ethernet header */
 #define KNI_ENET_HEADER_SIZE    14
@@ -333,12 +334,9 @@ send_to_eth(void *arg)
 		/* Burst rx from kni */
 		num = rte_kni_rx_burst(p->kni, pkts_burst, PKT_BURST_SZ);
         if (likely(num)) {
-            /* Burst tx to eth */
             nb_tx = rte_eth_tx_burst(port_id, 0, pkts_burst, num);
-            if (unlikely(nb_tx < num)) {
-                /* Free mbufs not tx to NIC */
+            if (unlikely(nb_tx < num))
                 kni_burst_free_mbufs(&pkts_burst[nb_tx], num - nb_tx);
-            }
         }
 
         tx_ring = p->tx_ring;
@@ -348,12 +346,9 @@ send_to_eth(void *arg)
             continue;
         }
 
-        /* Burst tx to eth */
         nb_tx = rte_eth_tx_burst(port_id, 0, pkts_burst, num);
         total_send_out += num;
         if (unlikely(nb_tx < num)) {
-            /* Free mbufs not tx to NIC */
-            std::cout << "dequeue error\n";
             kni_burst_free_mbufs(&pkts_burst[nb_tx], num - nb_tx);
         }
     }
@@ -422,12 +417,11 @@ main_loop(__rte_unused void *arg)
 static void
 print_usage(const char *prgname)
 {
-	RTE_LOG(INFO, APP, "\nUsage: %s [EAL options] -- -p PORTMASK -P "
-		   "[--config (port,lcore_rx,lcore_tx,lcore_kthread...)"
-		   "[,(port,lcore_rx,lcore_tx,lcore_kthread...)]]\n"
+	RTE_LOG(INFO, APP, "\nUsage: %s [EAL options] -- -p PORTMASK"
+		   "[--config (port,lcore_rx,lcore_tx,lcore_work,lcore_send)"
+		   "[,(port,lcore_rx,lcore_tx,lcore_work,lcore_send)]]\n"
 		   "    -p PORTMASK: hex bitmask of ports to use\n"
-		   "    -P : enable promiscuous mode\n"
-		   "    --config (port,lcore_rx,lcore_tx,lcore_kthread...): "
+		   "    --config (port,lcore_rx,lcore_tx,lcore_work,lcore_send): "
 		   "port and lcore configurations\n",
 	           prgname);
 }
@@ -458,9 +452,6 @@ print_config(void)
 		RTE_LOG(DEBUG, APP, "Port ID: %d\n", p[i]->port_id);
 		RTE_LOG(DEBUG, APP, "Rx lcore ID: %u, Tx lcore ID: %u\n",
 					p[i]->lcore_rx, p[i]->lcore_tx);
-		/*for (j = 0; j < p[i]->nb_lcore_k; j++)
-			RTE_LOG(DEBUG, APP, "Kernel thread lcore ID: %u\n",
-							p[i]->lcore_k[j]);*/
 	}
 }
 
@@ -542,10 +533,6 @@ parse_config(const char *arg)
 						(unsigned)RTE_MAX_LCORE);
 			goto fail;
 		}
-
-		/*for (j = 0; i < nb_token && j < KNI_MAX_KTHREAD; i++, j++)
-			kni_port_params_array[port_id]->lcore_k[j] = (uint8_t)int_fld[i];
-		kni_port_params_array[port_id]->nb_lcore_k = j;*/
 	}
 	print_config();
 
@@ -673,7 +660,7 @@ init_ring()
 			char name[32] = {0};
 
             snprintf(name, sizeof(name), "ring_rx_%u", i);
-            rx_ring = rte_ring_create(name, 1024 * 1024, rte_socket_id(), RING_F_SP_ENQ | RING_F_SC_DEQ);
+            rx_ring = rte_ring_create(name, RING_SIZE, rte_socket_id(), RING_F_SP_ENQ | RING_F_SC_DEQ);
             if (rx_ring == NULL)
                 rte_exit(EXIT_FAILURE, "Cannot create RX ring, %s, %s():%d\n", 
                         rte_strerror(rte_errno), __func__, __LINE__);
@@ -681,14 +668,14 @@ init_ring()
                 
 
             snprintf(name, sizeof(name), "ring_tx_%u", i);
-            tx_ring = rte_ring_create(name, 1024 * 1024, rte_socket_id(), RING_F_SP_ENQ | RING_F_SC_DEQ);
+            tx_ring = rte_ring_create(name, RING_SIZE, rte_socket_id(), RING_F_SP_ENQ | RING_F_SC_DEQ);
             if (tx_ring == NULL)
                 rte_exit(EXIT_FAILURE, "Cannot create TX ring, %s, %s():%d\n", 
                         rte_strerror(rte_errno), __func__, __LINE__);
             kni_port_params_array[i]->tx_ring = tx_ring;
 
             snprintf(name, sizeof(name), "ring_kni_%u", i);
-            kni_ring = rte_ring_create(name, 1024 * 1024, rte_socket_id(), RING_F_SP_ENQ | RING_F_SC_DEQ);
+            kni_ring = rte_ring_create(name, RING_SIZE, rte_socket_id(), RING_F_SP_ENQ | RING_F_SC_DEQ);
             if (kni_ring == NULL)
                 rte_exit(EXIT_FAILURE, "Cannot create KNI ring, %s, %s():%d\n", 
                         rte_strerror(rte_errno), __func__, __LINE__);
@@ -706,11 +693,8 @@ init_kni(void)
 
 	/* Calculate the maximum number of KNI interfaces that will be used */
 	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
-		if (kni_port_params_array[i]) {
-			//num_of_kni_ports += (params[i]->nb_lcore_k ?
-				//params[i]->nb_lcore_k : 1);
+		if (kni_port_params_array[i])
             num_of_kni_ports++;
-		}
 	}
 
 	/* Invoke rte KNI init to preallocate the ports */
@@ -723,9 +707,10 @@ init_port(uint8_t port)
 {
 	int ret;
 	uint16_t q;
-	uint8_t nb_rx_queue = 1;
-	//uint16_t nb_tx_queue = rte_lcore_count();
-	uint16_t nb_tx_queue = 1;
+    uint16_t nb_rx_queue, nb_tx_queue;
+
+	nb_rx_queue = 1;
+	nb_tx_queue = 1;
 
 	/* Initialise device and RX/TX queues */
 	RTE_LOG(INFO, APP, "Initialising port %u ...\n", (unsigned)port);
@@ -902,27 +887,21 @@ kni_alloc(uint8_t port_id)
 	snprintf(conf.name, RTE_KNI_NAMESIZE, "vEth%u", port_id);
 	conf.group_id = (uint16_t)port_id;
 	conf.mbuf_size = MAX_PACKET_SZ;
-	/*
-	 * The first KNI device associated to a port
-	 * is the master, for multiple kernel thread
-	 * environment.
-	 */
 
-		struct rte_kni_ops ops;
-		struct rte_eth_dev_info dev_info;
+    struct rte_kni_ops ops;
+    struct rte_eth_dev_info dev_info;
 
-		memset(&dev_info, 0, sizeof(dev_info));
-		rte_eth_dev_info_get(port_id, &dev_info);
-		conf.addr = dev_info.pci_dev->addr;
-		conf.id = dev_info.pci_dev->id;
+    memset(&dev_info, 0, sizeof(dev_info));
+    rte_eth_dev_info_get(port_id, &dev_info);
+    conf.addr = dev_info.pci_dev->addr;
+    conf.id = dev_info.pci_dev->id;
 
-		memset(&ops, 0, sizeof(ops));
-		ops.port_id = port_id;
-		ops.change_mtu = kni_change_mtu;
-		ops.config_network_if = kni_config_network_interface;
+    memset(&ops, 0, sizeof(ops));
+    ops.port_id = port_id;
+    ops.change_mtu = kni_change_mtu;
+    ops.config_network_if = kni_config_network_interface;
 
-		kni = rte_kni_alloc(pktmbuf_pool, &conf, &ops);
-
+    kni = rte_kni_alloc(pktmbuf_pool, &conf, &ops);
 	if (!kni)
 		rte_exit(EXIT_FAILURE, "Fail to create kni for "
 					"port: %d\n", port_id);
