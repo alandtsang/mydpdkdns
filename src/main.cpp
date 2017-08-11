@@ -75,8 +75,6 @@
 
 #define MAX_RX_QUEUE_PER_LCORE 16
 
-#define BURST_TX_WAIT_US 1
-uint32_t burst_tx_delay_time = BURST_TX_WAIT_US;
 
 static uint64_t total_send_out;
 
@@ -116,11 +114,9 @@ static int kni_config_network_interface(uint8_t port_id, uint8_t if_up);
 
 volatile bool force_quit;
 
-uint32_t  local_ip;
+uint32_t local_ip;
 
 std::shared_ptr<dnslog::Logger> logger;
-
-
 Worker worker;
 
 static void
@@ -141,7 +137,7 @@ stats_display(uint8_t port_id)
 static void
 signal_handler(int signum)
 {
-	/* When we receive a RTMIN or SIGINT signal, stop kni processing */
+	/* When we receive SIGINT signal, stop processing */
 	if (signum == SIGRTMIN || signum == SIGINT) {
 		printf("The processing is going to stop\n");
 
@@ -176,12 +172,12 @@ uint32_t get_netorder_ip(const char *ip)
 
 
 /**
- * Interface to burst rx and enqueue mbufs into rx_q
+ * Interface to burst rx and enqueue mbufs into rx_ring
  */
 static void
 rx_thread(struct kni_port_params *p)
 {
-	unsigned nb_rx;
+	unsigned nb_rx, sent;
 
     struct timespec nano;
     nano.tv_sec = 0;
@@ -203,7 +199,7 @@ rx_thread(struct kni_port_params *p)
 		    continue;
         }
 
-        unsigned int sent = rte_ring_sp_enqueue_burst(rx_ring, (void * const *)pkts_burst, nb_rx);
+        sent = rte_ring_sp_enqueue_burst(rx_ring, (void **)pkts_burst, nb_rx);
         if (unlikely(sent < nb_rx)) {
             while (sent < nb_rx)
                 rte_pktmbuf_free(pkts_burst[sent++]);
@@ -211,9 +207,6 @@ rx_thread(struct kni_port_params *p)
 	}
 }
 
-/**
- * Interface to dequeue mbufs from tx_q and burst tx
- */
 static void
 kni_thread(struct kni_port_params *p)
 {
@@ -298,8 +291,9 @@ tx_thread(void *arg)
 	struct rte_mbuf *pkts_burst[PKT_BURST_SZ];
 	struct rte_ring *tx_ring;
 
-	struct kni_port_params *p = (struct kni_port_params *) arg;
-	port_id = p->port_id;
+    struct kni_port_params *p = (struct kni_port_params *) arg;
+    port_id = p->port_id;
+    tx_ring = p->tx_ring;
 
     while (!force_quit) {
 		/* Burst rx from kni */
@@ -310,7 +304,6 @@ tx_thread(void *arg)
                 kni_burst_free_mbufs(&pkts_burst[nb_tx], num - nb_tx);
         }
 
-        tx_ring = p->tx_ring;
         num = rte_ring_sc_dequeue_burst(tx_ring, (void **)pkts_burst, PKT_BURST_SZ);
         if (unlikely(num == 0)) {
             nanosleep(&nano, NULL);
