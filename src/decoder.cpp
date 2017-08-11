@@ -52,18 +52,20 @@ void Decoder::swap_port(uint16_t *src, uint16_t *dst) {
 }
 
 unsigned
-Decoder::process_pkts(struct rte_mbuf *m)
+Decoder::process_pkts(struct rte_mbuf* pkt)
 {
+    char* buff = NULL;
+    char* buffstart = NULL;
     unsigned txpkts = 0;
 
-    ehdr = rte_pktmbuf_mtod(m, struct ether_hdr*);
+    ehdr = rte_pktmbuf_mtod(pkt, struct ether_hdr*);
 
     /* If not ip packet, forward to kni */
     if (ehdr->ether_type != rte_cpu_to_be_16(ETHER_TYPE_IPv4)) {
         return txpkts;
     }
 
-    ip_hdr = rte_pktmbuf_mtod_offset(m, struct ipv4_hdr *, sizeof(struct ether_hdr));
+    ip_hdr = rte_pktmbuf_mtod_offset(pkt, struct ipv4_hdr *, sizeof(struct ether_hdr));
     if (ip_hdr->dst_addr != local_ip)
         return txpkts;
 
@@ -76,8 +78,8 @@ Decoder::process_pkts(struct rte_mbuf *m)
                 return txpkts;
             }
 
-            char* buff = (char *)udp_hdr +  sizeof(struct udp_hdr);
-            char* buffstart = buff;
+            buff = (char *)udp_hdr +  sizeof(struct udp_hdr);
+            buffstart = buff;
 
             dns.decode(buff);
 
@@ -99,9 +101,6 @@ Decoder::process_pkts(struct rte_mbuf *m)
                         "answer=%s, src_ip=%s, sub_ip=%s",
                         qName.c_str(), domain_ip.c_str(), ip, sub_ip);
 
-            struct rte_mbuf* pkt = m;
-            pkt->next = NULL;
-
             /* Ethernet */
             swap_addr(&ehdr->s_addr, &ehdr->d_addr);
 
@@ -111,16 +110,16 @@ Decoder::process_pkts(struct rte_mbuf *m)
 
             /* UDP */
             swap_port(&udp_hdr->src_port, &udp_hdr->dst_port);
-            udp_hdr->dgram_cksum    = 0; /* No UDP checksum. */
+            udp_hdr->dgram_cksum = 0; /* No UDP checksum. */
 
             /* DNS */
             int dnslen = dns.code(buffstart);
 
-            pkt->pkt_len        = 14 + 20 + 8 + dnslen;
-            pkt->data_len       = pkt->pkt_len;
+            pkt->pkt_len         = 14 + 20 + 8 + dnslen;
+            pkt->data_len        = pkt->pkt_len;
             ip_hdr->total_length = RTE_CPU_TO_BE_16(pkt->pkt_len - sizeof(*ehdr));
             ip_hdr->hdr_checksum = ip_sum((unaligned_uint16_t *)ip_hdr, sizeof(*ip_hdr));
-            udp_hdr->dgram_len  = RTE_CPU_TO_BE_16(pkt->pkt_len - sizeof(*ehdr) - sizeof(*ip_hdr));
+            udp_hdr->dgram_len   = RTE_CPU_TO_BE_16(pkt->pkt_len - sizeof(*ehdr) - sizeof(*ip_hdr));
 
             total_dns_pkts++;
             return 1;
