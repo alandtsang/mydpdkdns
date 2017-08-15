@@ -56,6 +56,7 @@ Decoder::process_pkts(struct rte_mbuf* pkt)
 {
     char* buff = NULL;
     char* buffstart = NULL;
+    int dnslen;
     unsigned txpkts = 0;
 
     ehdr = rte_pktmbuf_mtod(pkt, struct ether_hdr*);
@@ -113,7 +114,7 @@ Decoder::process_pkts(struct rte_mbuf* pkt)
             udp_hdr->dgram_cksum = 0; /* No UDP checksum. */
 
             /* DNS */
-            int dnslen = dns.code(buffstart);
+            dnslen = dns.code(buffstart);
 
             pkt->pkt_len         = 14 + 20 + 8 + dnslen;
             pkt->data_len        = pkt->pkt_len;

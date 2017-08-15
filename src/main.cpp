@@ -52,7 +52,7 @@
 #define PKT_BURST_SZ            32
 
 /* How many objects (mbufs) to keep in per-lcore mempool cache */
-#define MEMPOOL_CACHE_SZ        250
+#define MEMPOOL_CACHE_SZ        256
 
 /* Number of RX ring descriptors */
 #define NB_RXD                  128
@@ -60,7 +60,7 @@
 /* Number of TX ring descriptors */
 #define NB_TXD                  512
 
-#define RING_SIZE               (1024 * 1024)
+#define RING_SIZE               (1024 * 8)
 
 /* Total octets in ethernet header */
 #define KNI_ENET_HEADER_SIZE    14
