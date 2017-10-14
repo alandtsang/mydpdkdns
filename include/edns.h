@@ -18,11 +18,11 @@
    +------------+--------------+------------------------------+
  */
 struct optrr {
-    uint8_t  opt_name;
-    uint16_t opt_type;
-    uint16_t opt_udpsize;
-    uint32_t opt_ttl;
-    uint16_t rdlen;
+  uint8_t opt_name;
+  uint16_t opt_type;
+  uint16_t opt_udpsize;
+  uint32_t opt_ttl;
+  uint16_t rdlen;
 };
 
 /*
@@ -40,12 +40,12 @@ struct optrr {
     +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
  */
 struct edns0opt {
-    uint16_t opt_code;
-    uint16_t opt_len;
-    uint16_t family;
-    uint8_t  source_netmask;
-    uint8_t  scope_netmask;
-    uint32_t sub_addr;
+  uint16_t opt_code;
+  uint16_t opt_len;
+  uint16_t family;
+  uint8_t source_netmask;
+  uint8_t scope_netmask;
+  uint32_t sub_addr;
 };
 
 /*
@@ -73,9 +73,9 @@ struct edns0opt {
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
 struct cookieopt {
-    uint16_t opt_code;
-    uint16_t opt_len;
-    char client_cookie[8];
+  uint16_t opt_code;
+  uint16_t opt_len;
+  char client_cookie[8];
 };
 
 #pragma pack()

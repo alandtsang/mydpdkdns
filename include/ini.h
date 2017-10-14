@@ -1,7 +1,6 @@
 #ifndef INCLUDE_INI_H__
 #define INCLUDE_INI_H__
 
-
 #include <iostream>
 #include <fstream>
 
@@ -18,17 +17,17 @@
    stop on first error), -1 on file open error, or -2 on memory allocation
    error (only when INI_USE_STACK is zero).
 */
-int ini_parse(const char* filename,
-              int (*handler)(void* user, const char* section,
-                             const char* name, const char* value),
-              void* user);
+int ini_parse(const char *filename,
+              int (*handler)(void *user, const char *section,
+                             const char *name, const char *value),
+              void *user);
 
 /* Same as ini_parse(), but takes a FILE* instead of filename. This doesn't
    close the file when it's finished -- the caller must do that. */
-int ini_parse_file(std::ifstream& ifs,
-                   int (*handler)(void* user, const char* section,
-                                  const char* name, const char* value),
-                   void* user);
+int ini_parse_file(std::ifstream &ifs,
+                   int (*handler)(void *user, const char *section,
+                                  const char *name, const char *value),
+                   void *user);
 
 /* Nonzero to allow multi-line value parsing, in the style of Python's
    ConfigParser. If allowed, ini_parse() will call the handler with the same
