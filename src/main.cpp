@@ -1,27 +1,17 @@
 #define __STDC_FORMAT_MACROS
 
 #include <stdio.h>
-#include <sys/queue.h>
-#include <stdarg.h>
 #include <errno.h>
 #include <getopt.h>
 
 #include <iostream>
-#include <string>
 #include <cstring>
-#include <cstdlib>
-#include <cstdint>
 #include <cinttypes>
 #include <memory>
 #include <ctime>
 #include <iomanip>
 
 #include <netinet/in.h>
-#include <linux/if.h>
-#include <linux/if_tun.h>
-#include <fcntl.h>
-#include <sys/ioctl.h>
-#include <unistd.h>
 #include <signal.h>
 
 #include <rte_ethdev.h>
@@ -30,13 +20,10 @@
 #include <rte_malloc.h>
 #include <rte_kni.h>
 
-#include <rte_ip.h>
-#include <rte_udp.h>
-
 #include "dns.h"
 #include "config.h"
 #include "worker.h"
-#include "logger.h"
+//#include "logger.h"
 
 
 /* Macros for printing using RTE_LOG */
@@ -68,12 +55,17 @@
 /* Total octets in the FCS */
 #define KNI_ENET_FCS_SIZE       4
 
-#define KNI_MAX_KTHREAD 32
+#define KNI_MAX_KTHREAD         32
 
 /* Configure how many packets ahead to prefetch, when reading packets */
 #define PREFETCH_OFFSET    3
 
 #define MAX_RX_QUEUE_PER_LCORE 16
+
+/* Version info */
+#define VERSION_MAJOR   0
+#define VERSION_MINOR   1
+#define VERSION_PATCH   3
 
 static uint64_t total_send_out;
 
@@ -115,6 +107,13 @@ uint32_t local_ip;
 
 std::shared_ptr<dnslog::Logger> logger;
 Worker worker;
+
+static void
+print_version() {
+  char buf[16] = {0};
+  sprintf(buf, "%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
+  std::cout << "\ndpdkdns version: " << buf << "\n";
+}
 
 static void
 stats_display(uint8_t port_id) {
@@ -368,11 +367,11 @@ main_loop(__rte_unused void *arg) {
 static void
 print_usage(const char *prgname) {
   RTE_LOG(INFO, APP, "\nUsage: %s [EAL options] -- -p PORTMASK"
-              "[--config (port,lcore_rx,lcore_tx,lcore_work,lcore_send)"
-              "[,(port,lcore_rx,lcore_tx,lcore_work,lcore_send)]]\n"
-              "    -p PORTMASK: hex bitmask of ports to use\n"
-              "    --config (port,lcore_rx,lcore_tx,lcore_work,lcore_send): "
-              "port and lcore configurations\n",
+      "[--config (port,lcore_rx,lcore_tx,lcore_work,lcore_send)"
+      "[,(port,lcore_rx,lcore_tx,lcore_work,lcore_send)]]\n"
+      "    -p PORTMASK: hex bitmask of ports to use\n"
+      "    --config (port,lcore_rx,lcore_tx,lcore_work,lcore_send): "
+      "port and lcore configurations\n",
           prgname);
 }
 
@@ -911,6 +910,8 @@ main(int argc, char **argv) {
   signal(SIGUSR1, signal_handler);
   signal(SIGINT, signal_handler);
 
+  print_version();
+
   logger = dnslog::Logger::getLogger();
 
   /* Initialise EAL */
@@ -971,8 +972,7 @@ main(int argc, char **argv) {
   /* Launch per-lcore function on every lcore */
   rte_eal_mp_remote_launch(main_loop, NULL, CALL_MASTER);
 
-  RTE_LCORE_FOREACH_SLAVE(i)
-  {
+  RTE_LCORE_FOREACH_SLAVE(i) {
     if (rte_eal_wait_lcore(i) < 0)
       return -1;
   }

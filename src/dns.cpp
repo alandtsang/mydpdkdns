@@ -119,7 +119,7 @@ int Dns::code(char *buffer) {
 
   /* Code Answer section */
   m_ra.r_zone = 0xc00c;
-  m_ra.r_ttl = 0;
+  m_ra.r_ttl = 120;
   m_ra.r_size = 4;
 
   char *p = std::strtok(cstr, ",");
