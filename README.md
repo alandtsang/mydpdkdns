@@ -43,8 +43,13 @@ cd mydpdkdns/tools
 ```
 
 ### insert modules and mount hugetlbfs
+./preparedpdk.sh NIC_NAME
+
+It will record the NIC_NAME information to nicinfo.log, and bind NIC_NAME to DPDK.
+
+eg:
 ```
-./preparedpdk.sh
+./preparedpdk.sh eth0
 ```
 
 ### start program
@@ -84,6 +89,8 @@ APP: Lcore 0 is reading from port 0
 ```
 
 ### configure IP and MAC addresses
+
+`upeth.sh`will read the nic information in the nicinfo.log, and then configure IP and MAC address for vEth0.
 ```
 ./upeth.sh
 APP: Configure network interface of 0 up
