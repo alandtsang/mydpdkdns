@@ -8,6 +8,7 @@
 
 struct server_t {
   std::string ip;
+  int port;
 };
 
 struct log_t {

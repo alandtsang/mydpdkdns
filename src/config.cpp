@@ -20,6 +20,7 @@ bool config::parse() {
   }
 
   server.ip = Get("server", "serv_ip", "192.168.44.129");
+  server.port = GetInteger("server", "serv_port", 53);
   log.level = GetInteger("log", "level", 6);
 
   return true;

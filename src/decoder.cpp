@@ -1,5 +1,5 @@
 #include <unordered_map>
-
+#include <iostream>
 #include <rte_ether.h>
 
 #include "decoder.h"
@@ -11,7 +11,8 @@
 #define RTE_CPU_TO_BE_16(cpu_16_v) \
     (uint16_t) ((((cpu_16_v) & 0xFF) << 8) | ((cpu_16_v) >> 8))
 
-extern uint32_t local_ip;
+extern uint32_t localIP;
+extern uint16_t dnsPort;
 
 uint16_t
 Decoder::ip_sum(const unaligned_uint16_t *hdr, int hdr_len) {
@@ -56,24 +57,22 @@ Decoder::process_pkts(struct rte_mbuf *pkt) {
   int dnslen;
   unsigned txpkts = 0;
 
-  ehdr = rte_pktmbuf_mtod(pkt,
-  struct ether_hdr*);
+  ehdr = rte_pktmbuf_mtod(pkt, struct ether_hdr*);
 
   /* If not ip packet, forward to kni */
   if (ehdr->ether_type != rte_cpu_to_be_16(ETHER_TYPE_IPv4)) {
     return txpkts;
   }
 
-  ip_hdr = rte_pktmbuf_mtod_offset(pkt,
-  struct ipv4_hdr *, sizeof(struct ether_hdr));
-  if (ip_hdr->dst_addr != local_ip)
+  ip_hdr = rte_pktmbuf_mtod_offset(pkt, struct ipv4_hdr *, sizeof(struct ether_hdr));
+  if (ip_hdr->dst_addr != localIP)
     return txpkts;
 
   switch (ip_hdr->next_proto_id) {
     case IPPROTO_UDP: {
       udp_hdr = (struct udp_hdr *) ((unsigned char *) ip_hdr + sizeof(struct ipv4_hdr));
       port_dst = rte_be_to_cpu_16(udp_hdr->dst_port);
-      if (port_dst != 53) {
+      if (port_dst != dnsPort) {
         return txpkts;
       }
 

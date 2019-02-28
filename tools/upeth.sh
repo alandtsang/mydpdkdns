@@ -1,7 +1,7 @@
 #!/bin/bash
 
 basepath=$(cd `dirname $0`; pwd)
-nicinfo="$basepath/nicinfo.log"
+nicinfo="$basepath/ethinfo"
 dev="vEth0"
 
 if [ ! -f "$nicinfo" ]; then

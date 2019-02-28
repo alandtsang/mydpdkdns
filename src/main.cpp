@@ -103,7 +103,8 @@ static int kni_config_network_interface(uint8_t port_id, uint8_t if_up);
 
 volatile bool force_quit;
 
-uint32_t local_ip;
+uint32_t localIP;
+uint16_t dnsPort;
 
 std::shared_ptr<dnslog::Logger> logger;
 Worker worker;
@@ -928,7 +929,8 @@ main(int argc, char **argv) {
 
   logger->set_level(cfg.log.level);
 
-  local_ip = get_netorder_ip(cfg.server.ip.c_str());
+  localIP = get_netorder_ip(cfg.server.ip.c_str());
+  dnsPort = cfg.server.port;
 
 
   /* Parse application arguments (after the EAL ones) */
