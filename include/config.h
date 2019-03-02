@@ -59,11 +59,11 @@ class config {
   std::map<std::string, std::string> _values;
   std::vector<std::string> _sections;
   static std::string MakeKey(std::string section, std::string name);
-  static int ValueHandler(void *user, const char *section, const char *name,
-                          const char *value);
+  static int ValueHandler(void *user, const char *section,
+                          const char *name, const char *value);
 
   config(const config &);
   void operator=(const config &);
 };
 
-#endif  // __INIREADER_H__
+#endif  // INCLUDE_CONFIG_H_

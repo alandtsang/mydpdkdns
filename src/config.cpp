@@ -75,8 +75,8 @@ string config::MakeKey(string section, string name) {
   return key;
 }
 
-int config::ValueHandler(void *user, const char *section, const char *name,
-                         const char *value) {
+int config::ValueHandler(void *user, const char *section,
+                         const char *name, const char *value) {
   config *reader = (config *) user;
   string key = MakeKey(section, name);
   if (reader->_values[key].size() > 0)

@@ -1,5 +1,5 @@
-#ifndef INCLUDE_INI_H__
-#define INCLUDE_INI_H__
+#ifndef INCLUDE_INI_H_
+#define INCLUDE_INI_H_
 
 #include <iostream>
 #include <fstream>
@@ -57,4 +57,4 @@ int ini_parse_file(std::ifstream &ifs,
 #define INI_MAX_LINE 200
 #endif
 
-#endif /* __INI_H__ */
+#endif /* INCLUDE_INI_H_ */

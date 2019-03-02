@@ -16,4 +16,4 @@ class Worker {
   std::shared_ptr<dnslog::Logger> logger;
 };
 
-#endif
+#endif // INCLUDE_WORKER_H_

@@ -99,7 +99,7 @@ APP: Lcore 0 is reading from port 0
 
 ### configure IP and MAC addresses
 
-`upeth.sh` will read the nic information in the nicinfo.log, and then configure IP and MAC address for vEth0.
+`upeth.sh` will read the nic information in the `ethinfo`, and then configure IP and MAC address for vEth0.
 ```
 # ./upeth.sh
 APP: Configure network interface of 0 up

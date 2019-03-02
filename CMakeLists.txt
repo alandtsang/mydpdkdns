@@ -20,7 +20,7 @@ message(STATUS "RTE_SDK include path：${RTE_SDK}/include")
 #lib连接文件目录
 link_directories(${PROJECT_SOURCE_DIR}/lib /usr/local/lib)
 link_directories("${RTE_SDK}/${RTE_TARGET}/lib")
-message(STATUS "RTE_SDK include path：${RTE_SDK}/lib")
+message(STATUS "RTE_SDK library path：${RTE_SDK}/lib")
 
 #指定编译器 参数
 SET(CMAKE_CXX_FLAGS "-g -Wall -Wextra -ffunction-sections -O3 -include $(RTE_SDK)/${RTE_TARGET}/include/rte_config.h -msse4.2")

@@ -80,4 +80,4 @@ struct cookieopt {
 
 #pragma pack()
 
-#endif /*INCLUDE_EDNS_H_ */
+#endif /* INCLUDE_EDNS_H_ */

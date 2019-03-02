@@ -50,4 +50,4 @@ class Decoder {
   std::string domain_ip;
 };
 
-#endif
+#endif // INCLUDE_DECODER_H_
